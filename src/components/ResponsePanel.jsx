@@ -202,7 +202,12 @@ export default function ResponsePanel({
   // ── 根节点子页签：对象/数组类根字段各成一个页签（内部为结构浏览器），标量根字段以「键 = 值」标签平铺 ──
   const [rootPref, setRootKey] = useState(undefined); // undefined = 自动（首个对象/数组字段），null = 完整 JSON
   const [nav, setNav] = useState(null);               // { root, path: string[], leaf, mode }：页签内的下钻位置
-  const [nodeFilter, setNodeFilter] = useState('');
+  const [nodeFilterInput, setNodeFilterInput] = useState(''); // 搜索框输入（实时）
+  const [nodeFilter, setNodeFilter] = useState('');           // 防抖后的搜索词（驱动筛选 / 高亮 / 自动展开）
+  useEffect(() => {
+    const t = setTimeout(() => setNodeFilter(nodeFilterInput), 200);
+    return () => clearTimeout(t);
+  }, [nodeFilterInput]);
   const rootTabs = useMemo(() => {
     if (!response || !response.ok || !isJsonBody || response.body.length > ROOT_TABS_MAX_BYTES) return null;
     let data;
@@ -241,11 +246,11 @@ export default function ResponsePanel({
   }, [rootTabs, rootKey, nav]);
   const explorerLeaf = useMemo(() => {
     if (!explorer || explorer.leaf === null) return null;
+    const value = explorer.node[explorer.leaf];
     return {
       key: explorer.leaf,
-      meta: explorer.items.find((c) => c.key === explorer.leaf),
       path: explorer.path + pathSeg(explorer.isArr, explorer.leaf),
-      text: scalarText(explorer.node[explorer.leaf])
+      text: isContainer(value) ? JSON.stringify(value, null, 2) : scalarText(value)
     };
   }, [explorer]);
   const explorerJsonText = useMemo(
@@ -258,13 +263,13 @@ export default function ResponsePanel({
   /** 进入某一层（keys 为相对根页签的路径），切层时清空节点筛选 */
   const goPath = (keys) => {
     setNav({ root: explorer.root, path: keys, leaf: null, mode: 'overview' });
+    setNodeFilterInput('');
     setNodeFilter('');
   };
-  /** 点击子节点：对象/数组进入下一层，标量在当前层显示详情；null 回到当前层概览 */
-  const selectChild = (k) => {
-    if (k !== null && isContainer(explorer.node[k])) { goPath([...explorer.keys, k]); return; }
-    setNav({ root: explorer.root, path: explorer.keys, leaf: k, mode: 'overview' });
-  };
+  /** 点击子节点：在当前层右侧美化展示（null 回到当前层概览） */
+  const selectChild = (k) => setNav({ root: explorer.root, path: explorer.keys, leaf: k, mode: 'overview' });
+  /** 进入下一层：rel 为相对当前层的路径 */
+  const enterPath = (rel) => goPath([...explorer.keys, ...rel]);
   const setExplorerMode = (m) => setNav({ root: explorer.root, path: explorer.keys, leaf: null, mode: m });
 
   // 新响应到达：美化类视图按 Content-Type 自动对齐（Raw/Hex/Base64 保持用户选择）
@@ -724,9 +729,10 @@ export default function ResponsePanel({
             <input
               className="root-node-filter"
               placeholder="搜索键名或内容"
-              value={nodeFilter}
-              onChange={(e) => setNodeFilter(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Escape') setNodeFilter(''); }}
+              value={nodeFilterInput}
+              spellCheck={false}
+              onChange={(e) => setNodeFilterInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') { setNodeFilterInput(''); setNodeFilter(''); } }}
             />
           )}
         </div>
@@ -776,6 +782,8 @@ export default function ResponsePanel({
             <JsonNodeExplorer
               crumbs={explorer.crumbs}
               onCrumb={(d) => goPath(explorer.keys.slice(0, d))}
+              node={explorer.node}
+              onEnter={enterPath}
               items={explorer.items}
               isArray={explorer.isArr}
               nodeLabel={explorer.label}
@@ -786,11 +794,7 @@ export default function ResponsePanel({
               onMode={setExplorerMode}
               filter={nodeFilter}
               onCopy={handleCopy}
-              detail={explorerLeaf ? (
-                <div className="root-field-scalar-wrap">
-                  <div className={`root-field-scalar type-${explorerLeaf.meta.type}`}>{explorerLeaf.text}</div>
-                </div>
-              ) : explorer.mode === 'json' ? (
+              detail={explorer.mode === 'json' ? (
                 <div className="json-exp-editor">
                   <CodeEditor className="response-code" value={explorerJsonText} language="json" readOnly lineWrap={wrapOn} searchQuery={cmSearchQuery} fontSize={fontSize} tabSize={tabSize} wordWrap={wordWrap} showLineNumbers={showLineNumbers} />
                 </div>

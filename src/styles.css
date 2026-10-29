@@ -11999,3 +11999,99 @@ body::after {
 /* 「基础信息」合成页签：与字段页签区分，用常规字体 */
 .root-tab-basic .root-tab-key { font-family: inherit; }
 
+/* ==== JSON 节点美化（参考 onlineissue monitor_view）：可折叠树 / 对象数组表格 / pdsResult / [step] ==== */
+.json-exp-tools { display: flex; flex-shrink: 0; gap: 2px; }
+.json-exp-tool {
+  padding: 2px 8px; font-size: 12px; border-radius: var(--radius-s);
+  background: none; color: var(--accent); white-space: nowrap;
+}
+.json-exp-tool:hover { background: var(--bg-hover); }
+.json-exp-hits {
+  flex-shrink: 0; margin-left: 6px; min-width: 18px; padding: 0 5px; border-radius: 8px; text-align: center;
+  font-family: var(--font-mono); font-size: 11px; line-height: 16px;
+  background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange);
+}
+.json-exp-hits.zero { background: transparent; color: var(--text-dim); }
+.json-exp-table .c-name .json-exp-hits { float: right; }
+
+.jt-pane { flex: 1; min-height: 0; overflow: auto; padding: 8px 14px 16px; font-size: 13px; }
+.jt-note { margin-bottom: 6px; font-size: 12px; color: var(--text-dim); }
+.jt-tree { font-family: var(--font-mono); font-size: 13px; line-height: 1.7; }
+.jt-row { position: relative; padding-left: 18px; word-break: break-all; }
+.jt-tg { position: absolute; left: 0; top: 0; width: 16px; text-align: center; color: var(--text-dim); user-select: none; }
+.jt-row:not(.leaf) > .jt-line > .jt-tg { cursor: pointer; }
+.jt-row:not(.leaf) > .jt-line > .jt-tg::before { content: "\25B8"; }
+.jt-row.open > .jt-line > .jt-tg::before { content: "\25BE"; }
+.jt-row:not(.leaf) > .jt-line > .jt-tg:hover { color: var(--accent); }
+.jt-row:not(.leaf) > .jt-line > .jt-k,
+.jt-row:not(.leaf) > .jt-line > .jt-p,
+.jt-row:not(.leaf) > .jt-line > .jt-sum,
+.jt-row:not(.leaf) > .jt-line > .jt-pv { cursor: pointer; }
+.jt-ch { border-left: 1px dotted var(--border); margin-left: -11px; padding-left: 11px; }
+.jt-k { color: var(--accent); }
+.jt-k.idx, .jt-p, .jt-sum { color: var(--text-dim); }
+.jt-sum.empty { opacity: 0.7; }
+.jt-pv {
+  margin-left: 8px; color: var(--text-dim); opacity: 0.7; display: inline-block; max-width: 60%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom;
+}
+.jt-s { color: var(--green); }
+.jt-s.empty { color: var(--text-dim); }
+.jt-n { color: var(--orange); }
+.jt-b.t { color: var(--green); font-weight: 700; }
+.jt-b.f { color: var(--red); font-weight: 700; }
+.jt-null { color: var(--text-dim); font-style: italic; }
+.jt-badge {
+  margin-left: 6px; padding: 0 5px; border-radius: 3px; font-size: 10px; vertical-align: 1px;
+  background: color-mix(in srgb, var(--orange) 16%, transparent); color: var(--orange);
+}
+.jt-note .jt-badge { margin-left: 0; }
+.jt-enter {
+  margin-left: 8px; padding: 0 6px; font-size: 11px; line-height: 16px; vertical-align: 1px;
+  border: 1px solid var(--border); border-radius: 3px; background: none; color: var(--accent);
+  opacity: 0; transition: opacity 0.12s; cursor: pointer;
+}
+.jt-line:hover > .jt-enter, .jt-enter:focus-visible { opacity: 1; }
+.jt-enter:hover { border-color: var(--accent); }
+.jt-more { margin: 2px 0 4px 18px; color: var(--accent); cursor: pointer; }
+.jt-more:hover { text-decoration: underline; }
+mark.jt-hl { background: color-mix(in srgb, var(--orange) 45%, transparent); color: inherit; border-radius: 2px; padding: 0 1px; }
+.jt-pane a[href^="http"] { color: var(--accent); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+
+.jt-tblwrap { overflow: auto; max-width: 100%; margin: 2px 0 6px; }
+.jt-tbl { border-collapse: collapse; width: 100%; font-size: 12px; }
+.jt-tbl th, .jt-tbl td { padding: 3px 8px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+.jt-tbl th { background: var(--bg-panel); color: var(--text-dim); font-weight: 500; white-space: nowrap; font-family: var(--font-mono); }
+.jt-tbl td { font-family: var(--font-mono); word-break: break-all; }
+.jt-tbl .idx { width: 1%; color: var(--text-dim); text-align: right; white-space: nowrap; }
+.jt-tbl .num { width: 1%; text-align: right; white-space: nowrap; }
+.jt-tbl td.k { color: var(--accent); white-space: nowrap; word-break: normal; }
+.jt-tbl td.dim { color: var(--text-dim); }
+.jt-tbl tr.off td { opacity: 0.55; }
+.jt-tbl tbody tr:hover td { background: var(--bg-hover); }
+
+.jt-sec { margin: 4px 0 16px; }
+.jt-sec-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--text); }
+.jt-sec-h code { font-family: var(--font-mono); color: var(--accent); }
+.jt-sec-h .sub { font-weight: 400; font-size: 12px; color: var(--text-dim); }
+.jt-sec-h .sub b.ok { color: var(--green); }
+.jt-sec-h .sub b.err { color: var(--red); }
+.jt-group { margin: 10px 0 6px; padding: 3px 8px; border-radius: 3px; background: var(--bg-hover); font-weight: 600; }
+.jt-empty { padding: 14px; color: var(--text-dim); text-align: center; }
+.jt-legend { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 12px; color: var(--text-dim); }
+.jt-legend .tip { margin-left: 4px; }
+.jt-flags { display: flex; flex-wrap: wrap; gap: 4px; }
+.jt-flag {
+  padding: 1px 7px; border: 1px solid var(--border); border-radius: 3px; background: var(--bg);
+  color: var(--text-dim); font-family: var(--font-mono); font-size: 11px; line-height: 18px; white-space: nowrap; cursor: default;
+}
+.jt-flag.on { border-color: color-mix(in srgb, var(--green) 55%, transparent); background: color-mix(in srgb, var(--green) 12%, transparent); color: var(--green); }
+.jt-flag.v { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.jt-flag i { font-style: normal; margin-left: 2px; opacity: 0.85; }
+.jt-chip {
+  display: inline-block; margin: 1px 4px 1px 0; padding: 0 6px; border-radius: 3px;
+  background: var(--bg-hover); color: var(--text); font-size: 11px; line-height: 18px; word-break: break-all;
+}
+.jt-rest { display: inline; }
+.jt-rest summary { display: inline; cursor: pointer; color: var(--accent); font-size: 11px; }
+
