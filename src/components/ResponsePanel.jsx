@@ -17,6 +17,23 @@ const HEX_MAX_BYTES = 512 * 1024;
 const LARGE_BODY_THRESHOLD = 1024 * 1024;
 /** 大文件最大显示行数 */
 const LARGE_BODY_MAX_LINES = 5000;
+/** 根节点子页签：超过此体积不拆分（避免重复解析超大 JSON） */
+const ROOT_TABS_MAX_BYTES = 5 * 1024 * 1024;
+const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+/** 描述 JSON 值：类型 + 页签徽标（标量直接显示值，对象/数组显示规模）+ 摘要 */
+function describeJsonValue(v) {
+  if (v === null) return { type: 'null', badge: 'null', summary: 'null' };
+  if (Array.isArray(v)) return { type: 'array', badge: `[${v.length}]`, summary: `数组 · ${v.length} 项` };
+  if (typeof v === 'object') {
+    const n = Object.keys(v).length;
+    return { type: 'object', badge: `{${n}}`, summary: `对象 · ${n} 个字段` };
+  }
+  if (typeof v === 'string') {
+    return { type: 'string', badge: v.length > 16 ? `"${v.slice(0, 16)}…"` : `"${v}"`, summary: `字符串 · ${v.length} 字符` };
+  }
+  if (typeof v === 'number') return { type: 'number', badge: String(v), summary: '数字' };
+  return { type: 'boolean', badge: String(v), summary: '布尔' };
+}
 /** 页签/视图顺序：切换时据序号差决定滑动方向 */
 const RESP_TABS = ['body', 'headers', 'cookies', 'timings', 'trace', 'tests'];
 /** 响应体视图：美化视图按内容类型展示，原始视图看原始内容，Diff 对比历史响应 */
@@ -190,6 +207,33 @@ export default function ResponsePanel({
     try { JSON.parse(response.body); return true; } catch { return false; }
   }, [response, fmtResult]);
 
+  // ── 根节点子页签：JSON 对象的每个根字段作为一个子页签，选中后单独美化展示 ──
+  const [rootKey, setRootKey] = useState(null); // null = 全部
+  const rootTabs = useMemo(() => {
+    if (!response || !response.ok || !isJsonBody || response.body.length > ROOT_TABS_MAX_BYTES) return null;
+    let data;
+    try { data = JSON.parse(response.body); } catch { return null; }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+    const keys = Object.keys(data);
+    if (keys.length < 2) return null; // 只有一个根字段时拆分没有意义
+    return { data, items: keys.map((k) => ({ key: k, ...describeJsonValue(data[k]) })) };
+  }, [response, isJsonBody]);
+  // 新响应里没有当前选中的字段时回到「全部」；字段仍在则保持选择，便于重复发送时盯同一个字段
+  useEffect(() => {
+    if (rootKey !== null && (!rootTabs || !hasOwn(rootTabs.data, rootKey))) setRootKey(null);
+  }, [rootTabs, rootKey]);
+  const rootView = useMemo(() => {
+    if (!rootTabs || rootKey === null || !hasOwn(rootTabs.data, rootKey)) return null;
+    const value = rootTabs.data[rootKey];
+    const isObj = value !== null && typeof value === 'object';
+    return {
+      key: rootKey, value, isObj,
+      text: isObj ? JSON.stringify(value, null, 2) : JSON.stringify(value),
+      meta: describeJsonValue(value)
+    };
+  }, [rootTabs, rootKey]);
+  const showRootView = view === 'json' && !!rootView;
+
   // 新响应到达：美化类视图按 Content-Type 自动对齐（Raw/Hex/Base64 保持用户选择）
   const lastRespRef = useRef(null);
   useEffect(() => {
@@ -210,7 +254,7 @@ export default function ResponsePanel({
   // 体内搜索：把当前视图文本切成 普通段/命中段，命中段带序号；同时记录命中区间供高亮合并渲染
   const searchInfo = useMemo(() => {
     if (!searchOpen || !query || !response || !response.ok) return null;
-    const text = view === 'raw' ? response.body : prettyBody;
+    const text = view === 'raw' ? response.body : (showRootView ? rootView.text : prettyBody);
     let re;
     try {
       const src = regexOn ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -233,13 +277,13 @@ export default function ResponsePanel({
     }
     if (last < text.length) segments.push({ t: text.slice(last) });
     return { error: false, segments, hits, count };
-  }, [searchOpen, query, caseSense, regexOn, view, prettyBody, response]);
+  }, [searchOpen, query, caseSense, regexOn, view, prettyBody, response, showRootView, rootView]);
 
   const hitCount = searchInfo && !searchInfo.error ? searchInfo.count : 0;
   const curHit = hitCount > 0 ? ((hitIdx % hitCount) + hitCount) % hitCount : 0;
 
   // 搜索条件变化时回到第一个命中
-  useEffect(() => { setHitIdx(0); }, [query, caseSense, regexOn, view]);
+  useEffect(() => { setHitIdx(0); }, [query, caseSense, regexOn, view, rootKey]);
 
   // Pretty 视图：将搜索查询传递给 CodeMirror 装饰系统
   const cmSearchQuery = useMemo(() => {
@@ -447,8 +491,8 @@ export default function ResponsePanel({
   /** 复制当前视图的响应体（Pretty 复制美化后文本，其他复制原文） */
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(PRETTY_VIEWS.includes(view) ? prettyBody : response.body);
-      onToast && onToast('已复制响应体');
+      await navigator.clipboard.writeText(showRootView ? rootView.text : (PRETTY_VIEWS.includes(view) ? prettyBody : response.body));
+      onToast && onToast(showRootView ? `已复制 ${rootView.key}` : '已复制响应体');
     } catch (e) {
       onToast && onToast('复制失败：' + e.message);
     }
@@ -617,6 +661,31 @@ export default function ResponsePanel({
         </div>
       )}
 
+      {tab === 'body' && view === 'json' && rootTabs && (
+        <div className="root-tabs" role="tablist" aria-label="JSON 根节点">
+          <button
+            role="tab" aria-selected={rootKey === null}
+            className={rootKey === null ? 'root-tab active' : 'root-tab'}
+            title="显示完整响应"
+            onClick={() => setRootKey(null)}
+          >
+            <span className="root-tab-key">全部</span>
+            <span className="root-tab-badge">{rootTabs.items.length}</span>
+          </button>
+          {rootTabs.items.map((it) => (
+            <button
+              key={it.key} role="tab" aria-selected={rootKey === it.key}
+              className={`root-tab type-${it.type}${rootKey === it.key ? ' active' : ''}`}
+              title={`${it.key} · ${it.summary}`}
+              onClick={() => setRootKey(it.key)}
+            >
+              <span className="root-tab-key">{it.key}</span>
+              <span className="root-tab-badge">{it.badge}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {tab === 'body' && searchOpen && (
         <div className="body-search-bar">
           <input
@@ -656,7 +725,27 @@ export default function ResponsePanel({
         {/* 页签/视图切换时方向滑动交叉淡出；滚动容器下沉到 pane 层；重内容延迟一帧挂载 */}
         <div className="response-pane">
         {/* 美化视图（JSON/HTML/XML/JavaScript）：始终使用 CodeMirror（内置 Ctrl+F 搜索 + 行号 + 层级折叠），避免自定义 mark 渲染大 JSON 时卡顿 */}
-        {tab === 'body' && PRETTY_VIEWS.includes(view) && (
+        {tab === 'body' && showRootView && (
+          <DeferredMount key={'root-' + rootView.key}>
+            <div className="root-field-head">
+              <span className="root-field-path">$.{rootView.key}</span>
+              <span className={`root-field-type type-${rootView.meta.type}`}>{rootView.meta.summary}</span>
+              {rootView.isObj && <span className="root-field-size">{formatSize(rootView.text.length)}</span>}
+              <span className="flex-spacer" />
+              <button className="btn-secondary root-field-copy" onClick={handleCopy}>复制</button>
+            </div>
+            {rootView.isObj ? (
+              <CodeEditor className="response-code" value={rootView.text} language="json" readOnly lineWrap={wrapOn} searchQuery={cmSearchQuery} fontSize={fontSize} tabSize={tabSize} wordWrap={wordWrap} showLineNumbers={showLineNumbers} />
+            ) : (
+              <div className="root-field-scalar-wrap">
+                <div className={`root-field-scalar type-${rootView.meta.type}`}>
+                  {rootView.meta.type === 'string' ? rootView.value : String(rootView.value)}
+                </div>
+              </div>
+            )}
+          </DeferredMount>
+        )}
+        {tab === 'body' && PRETTY_VIEWS.includes(view) && !showRootView && (
           <DeferredMount>
             {response.body.length > LARGE_BODY_THRESHOLD && !showFullBody && (
               <div className="large-body-banner">

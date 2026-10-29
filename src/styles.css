@@ -4713,59 +4713,21 @@ body.resizing { user-select: none; cursor: col-resize; }
 
 
 
-/* 折叠指示器：始终显示，hover 高亮 */
-
-
-
-.code-editor .cm-foldGutter { min-width: 14px; }
-
-
-
+/* 折叠指示器：SVG 箭头，始终显示；点击区域占满整行 gutter，hover 高亮 */
+.code-editor .cm-foldGutter { min-width: 22px; }
 .code-editor .cm-foldGutter .cm-gutterElement {
-
-
-
   padding: 0; cursor: pointer;
-
-
-
   display: flex; align-items: center; justify-content: center;
-
-
-
 }
-
-
-
-.code-editor .cm-foldGutter span {
-
-
-
+.code-editor .cm-fold-marker {
   display: flex; align-items: center; justify-content: center;
-
-
-
-  width: 16px; height: 20px;
-
-
-
-  font-size: 16px; line-height: 1;
-
-
-
-  color: var(--text-dim);
-
-
-
-  transition: color 0.12s;
-
-
-
+  width: 20px; height: 100%; min-height: 20px;
+  color: var(--text-dim); border-radius: 4px;
+  transition: color 0.12s, background 0.12s;
 }
-
-
-
-.code-editor .cm-foldGutter .cm-gutterElement:hover span { color: var(--accent); }
+.code-editor .cm-fold-marker svg { width: 18px; height: 18px; display: block; }
+.code-editor .cm-fold-marker.is-closed { color: var(--accent); }
+.code-editor .cm-foldGutter .cm-gutterElement:hover .cm-fold-marker { color: var(--accent); background: var(--bg-hover); }
 
 
 
@@ -11897,3 +11859,58 @@ body::after {
 .editor-history-changes .eh-line.mod { color: var(--text-dim); }
 
 .editor-history-changes .eh-line .eh-name { color: var(--orange); flex-shrink: 0; }
+
+
+/* ==== JSON 根节点子页签：根字段平铺为胶囊页签，选中后单独美化展示 ==== */
+.root-tabs {
+  display: flex; gap: 6px; padding: 6px 12px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+  overflow-x: auto; scrollbar-width: thin;
+}
+.root-tab {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  max-width: 280px; padding: 3px 6px 3px 10px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: none; color: var(--text-dim); font-size: 13px; cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.root-tab:hover { color: var(--text); background: var(--bg-hover); }
+.root-tab.active {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.root-tab-key { font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.root-tab-badge {
+  font-family: var(--font-mono); font-size: 11px; line-height: 16px;
+  padding: 0 6px; border-radius: 999px; background: var(--bg); color: var(--text-dim);
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* 徽标配色与 JSON 语法高亮一致：字符串绿、数字橙、布尔紫、null 红 */
+.root-tab.type-string .root-tab-badge { color: var(--green); }
+.root-tab.type-number .root-tab-badge { color: var(--orange); }
+.root-tab.type-boolean .root-tab-badge { color: var(--purple); }
+.root-tab.type-null .root-tab-badge { color: var(--red); }
+.root-tab.type-object .root-tab-badge,
+.root-tab.type-array .root-tab-badge { color: var(--accent); }
+
+.root-field-head {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  padding: 6px 12px; border-bottom: 1px dashed var(--border);
+  font-size: 12px; color: var(--text-dim);
+}
+.root-field-path { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text); }
+.root-field-type { padding: 1px 8px; border-radius: 999px; background: var(--bg-hover); }
+.root-field-size { font-family: var(--font-mono); }
+.root-field-copy { padding: 2px 10px; font-size: 12px; }
+.root-field-scalar-wrap { flex: 1; overflow: auto; padding: 16px; }
+.root-field-scalar {
+  padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--radius-m);
+  background: var(--bg-panel); box-shadow: var(--shadow-1);
+  font-family: var(--font-mono); font-size: 16px; line-height: 1.6;
+  white-space: pre-wrap; word-break: break-all; user-select: text;
+}
+.root-field-scalar.type-string { color: var(--green); }
+.root-field-scalar.type-number { color: var(--orange); }
+.root-field-scalar.type-boolean { color: var(--purple); }
+.root-field-scalar.type-null { color: var(--red); font-style: italic; }

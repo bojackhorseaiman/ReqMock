@@ -456,6 +456,20 @@ const jsonBracketFold = foldService.of((state, lineStart, lineEnd) => {
 
 
 
+/**
+ * 折叠标记：SVG 箭头替代字体字符（字体字形大小/基线不可控，放大后会错位）
+ * open=true 表示当前可折叠（向下箭头），false 表示已折叠（向右箭头）
+ */
+const FOLD_SVG_OPEN = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const FOLD_SVG_CLOSED = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function createFoldMarker(open) {
+  const el = document.createElement('span');
+  el.className = open ? 'cm-fold-marker is-open' : 'cm-fold-marker is-closed';
+  el.title = open ? '折叠' : '展开';
+  el.innerHTML = open ? FOLD_SVG_OPEN : FOLD_SVG_CLOSED;
+  return el;
+}
+
 /** 搜索高亮装饰：普通命中 */
 
 
@@ -1094,7 +1108,7 @@ export default function CodeEditor({ value, onChange, language = 'text', placeho
 
 
 
-      foldGutter(),
+      foldGutter({ markerDOM: createFoldMarker }),
 
 
 
