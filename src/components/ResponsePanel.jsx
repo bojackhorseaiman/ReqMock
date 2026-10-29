@@ -8,7 +8,7 @@ import { diffLines, diffStats } from '../utils/diffUtil.js';
 import { toCurl } from '../utils/curlUtil.js';
 import CodeEditor from './CodeEditor.jsx';
 import {
-  JsonNodeExplorer, buildChildren, describeJsonValue, formatBytes, hasOwn, isContainer, pathSeg, scalarText, utf8Len
+  JsonNodeExplorer, describeJsonValue, formatBytes, isContainer, pathSeg, resolveExplorer, scalarText, utf8Len
 } from './JsonExplorer.jsx';
 import { JbIcon } from './Icons.jsx';
 
@@ -197,7 +197,7 @@ export default function ResponsePanel({
 
   // ── 根节点子页签：对象/数组类根字段各成一个页签（内部为结构浏览器），标量根字段以「键 = 值」标签平铺 ──
   const [rootPref, setRootKey] = useState(undefined); // undefined = 自动（首个对象/数组字段），null = 完整 JSON
-  const [childSel, setChildSel] = useState(null);     // { root, key }：页签内选中的子节点；null = 概览
+  const [nav, setNav] = useState(null);               // { root, path: string[], leaf, mode }：页签内的下钻位置
   const [nodeFilter, setNodeFilter] = useState('');
   const rootTabs = useMemo(() => {
     if (!response || !response.ok || !isJsonBody || response.body.length > ROOT_TABS_MAX_BYTES) return null;
@@ -218,27 +218,39 @@ export default function ResponsePanel({
   const rootKey = !rootTabs || rootPref === null ? null
     : (rootPref !== undefined && rootTabs.tabs.some((t) => t.key === rootPref)) ? rootPref
       : rootTabs.tabs[0].key;
+  // 下钻位置随新响应保留：路径在新响应中缺失时自动停在最深的有效层
   const explorer = useMemo(() => {
     if (!rootTabs || rootKey === null) return null;
     const tabInfo = rootTabs.tabs.find((t) => t.key === rootKey);
-    const node = rootTabs.data[rootKey];
-    return { key: rootKey, node, bytes: tabInfo.bytes, items: buildChildren(node), path: '$' + pathSeg(false, rootKey) };
-  }, [rootTabs, rootKey]);
-  const childKey = explorer && childSel && childSel.root === rootKey && hasOwn(explorer.node, childSel.key) ? childSel.key : null;
-  const explorerChild = useMemo(() => {
-    if (!explorer || childKey === null) return null;
-    const value = explorer.node[childKey];
+    return resolveExplorer(rootTabs.data[rootKey], rootKey, tabInfo.bytes, nav && nav.root === rootKey ? nav : null);
+  }, [rootTabs, rootKey, nav]);
+  const explorerLeaf = useMemo(() => {
+    if (!explorer || explorer.leaf === null) return null;
     return {
-      key: childKey,
-      value,
-      isObj: isContainer(value),
-      meta: explorer.items.find((c) => c.key === childKey),
-      path: explorer.path + pathSeg(Array.isArray(explorer.node), childKey),
-      text: isContainer(value) ? JSON.stringify(value, null, 2) : scalarText(value)
+      key: explorer.leaf,
+      meta: explorer.items.find((c) => c.key === explorer.leaf),
+      path: explorer.path + pathSeg(explorer.isArr, explorer.leaf),
+      text: scalarText(explorer.node[explorer.leaf])
     };
-  }, [explorer, childKey]);
+  }, [explorer]);
+  const explorerJsonText = useMemo(
+    () => (explorer && explorer.leaf === null && explorer.mode === 'json' ? JSON.stringify(explorer.node, null, 2) : ''),
+    [explorer]
+  );
   const showRootView = view === 'json' && !!explorer;
-  const explorerText = explorerChild ? explorerChild.text : '';
+  const explorerText = explorerLeaf ? explorerLeaf.text : explorerJsonText;
+  const explorerSig = explorer ? `${explorer.path}|${explorer.leaf ?? ''}|${explorer.mode}` : '';
+  /** 进入某一层（keys 为相对根页签的路径），切层时清空节点筛选 */
+  const goPath = (keys) => {
+    setNav({ root: explorer.root, path: keys, leaf: null, mode: 'overview' });
+    setNodeFilter('');
+  };
+  /** 点击子节点：对象/数组进入下一层，标量在当前层显示详情；null 回到当前层概览 */
+  const selectChild = (k) => {
+    if (k !== null && isContainer(explorer.node[k])) { goPath([...explorer.keys, k]); return; }
+    setNav({ root: explorer.root, path: explorer.keys, leaf: k, mode: 'overview' });
+  };
+  const setExplorerMode = (m) => setNav({ root: explorer.root, path: explorer.keys, leaf: null, mode: m });
   const copyText = async (text, okMsg) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -297,7 +309,7 @@ export default function ResponsePanel({
   const curHit = hitCount > 0 ? ((hitIdx % hitCount) + hitCount) % hitCount : 0;
 
   // 搜索条件变化时回到第一个命中
-  useEffect(() => { setHitIdx(0); }, [query, caseSense, regexOn, view, rootKey, childKey]);
+  useEffect(() => { setHitIdx(0); }, [query, caseSense, regexOn, view, rootKey, explorerSig]);
 
   // Pretty 视图：将搜索查询传递给 CodeMirror 装饰系统
   const cmSearchQuery = useMemo(() => {
@@ -506,9 +518,9 @@ export default function ResponsePanel({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(showRootView
-        ? (explorerChild ? explorerChild.text : JSON.stringify(explorer.node, null, 2))
+        ? (explorerLeaf ? explorerLeaf.text : (explorerJsonText || JSON.stringify(explorer.node, null, 2)))
         : (PRETTY_VIEWS.includes(view) ? prettyBody : response.body));
-      onToast && onToast(showRootView ? `已复制 ${explorerChild ? explorerChild.path : explorer.path}` : '已复制响应体');
+      onToast && onToast(showRootView ? `已复制 ${explorerLeaf ? explorerLeaf.path : explorer.path}` : '已复制响应体');
     } catch (e) {
       onToast && onToast('复制失败：' + e.message);
     }
@@ -762,35 +774,29 @@ export default function ResponsePanel({
         <div className="response-pane">
         {/* 美化视图（JSON/HTML/XML/JavaScript）：始终使用 CodeMirror（内置 Ctrl+F 搜索 + 行号 + 层级折叠），避免自定义 mark 渲染大 JSON 时卡顿 */}
         {tab === 'body' && showRootView && (
-          <DeferredMount key={'root-' + explorer.key}>
+          <DeferredMount key={'root-' + explorer.root}>
             <JsonNodeExplorer
-              name={explorer.key}
-              nodeBytes={explorer.bytes}
+              crumbs={explorer.crumbs}
+              onCrumb={(d) => goPath(explorer.keys.slice(0, d))}
               items={explorer.items}
-              childKey={childKey}
-              onSelectChild={(k) => setChildSel(k === null ? null : { root: explorer.key, key: k })}
+              isArray={explorer.isArr}
+              nodeLabel={explorer.label}
+              nodeBytes={explorer.bytes}
+              leafKey={explorer.leaf}
+              onSelectChild={selectChild}
+              mode={explorer.mode}
+              onMode={setExplorerMode}
               filter={nodeFilter}
-              detail={explorerChild && (
-                <>
-                  <div className="root-field-head">
-                    <button className="btn-secondary json-exp-back" title="返回概览" onClick={() => setChildSel(null)}>‹ 概览</button>
-                    <span className="root-field-path">{explorerChild.path}</span>
-                    <span className={`root-field-type type-${explorerChild.meta.type}`}>{explorerChild.meta.label}</span>
-                    <span className="root-field-size">{formatBytes(explorerChild.meta.bytes)}</span>
-                    <span className="flex-spacer" />
-                    <button className="btn-secondary root-field-copy" onClick={handleCopy}>复制</button>
-                  </div>
-                  {explorerChild.isObj ? (
-                    <div className="json-exp-editor">
-                      <CodeEditor className="response-code" value={explorerChild.text} language="json" readOnly lineWrap={wrapOn} searchQuery={cmSearchQuery} fontSize={fontSize} tabSize={tabSize} wordWrap={wordWrap} showLineNumbers={showLineNumbers} />
-                    </div>
-                  ) : (
-                    <div className="root-field-scalar-wrap">
-                      <div className={`root-field-scalar type-${explorerChild.meta.type}`}>{explorerChild.text}</div>
-                    </div>
-                  )}
-                </>
-              )}
+              onCopy={handleCopy}
+              detail={explorerLeaf ? (
+                <div className="root-field-scalar-wrap">
+                  <div className={`root-field-scalar type-${explorerLeaf.meta.type}`}>{explorerLeaf.text}</div>
+                </div>
+              ) : explorer.mode === 'json' ? (
+                <div className="json-exp-editor">
+                  <CodeEditor className="response-code" value={explorerJsonText} language="json" readOnly lineWrap={wrapOn} searchQuery={cmSearchQuery} fontSize={fontSize} tabSize={tabSize} wordWrap={wordWrap} showLineNumbers={showLineNumbers} />
+                </div>
+              ) : null}
             />
           </DeferredMount>
         )}

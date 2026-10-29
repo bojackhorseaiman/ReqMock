@@ -11972,3 +11972,40 @@ body::after {
 .root-field-scalar.type-number { color: var(--orange); }
 .root-field-scalar.type-boolean { color: var(--purple); }
 .root-field-scalar.type-null { color: var(--red); font-style: italic; }
+
+/* ==== JSON 结构浏览器：逐层下钻（路径导航 + 上一层 + 概览/JSON 切换） ==== */
+.json-exp:focus { outline: none; }
+.json-exp-item.up { color: var(--text-dim); font-family: inherit; }
+.json-exp-item.up:hover { color: var(--accent); }
+.json-exp-drill { flex-shrink: 0; width: 10px; font-size: 15px; line-height: 1; color: var(--text-dim); text-align: center; }
+.json-exp-item:hover .json-exp-drill, .json-exp-table tr:hover .json-exp-drill { color: var(--accent); }
+.json-exp-table .c-name .json-exp-drill { float: right; margin-left: 6px; }
+.json-exp-head {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0; min-width: 0;
+  padding: 6px 12px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-dim);
+}
+.json-exp-crumbs {
+  display: flex; align-items: center; gap: 2px; min-width: 0; flex: 0 1 auto;
+  overflow-x: auto; white-space: nowrap; scrollbar-width: none;
+  font-family: var(--font-mono); font-size: 13px;
+}
+.json-exp-crumbs::-webkit-scrollbar { display: none; }
+.json-exp-crumb {
+  flex-shrink: 0; padding: 2px 6px; border-radius: var(--radius-s);
+  background: none; color: var(--accent); font: inherit; cursor: pointer;
+}
+.json-exp-crumb:hover { background: var(--bg-hover); text-decoration: underline; }
+.json-exp-crumb.current { color: var(--text); font-weight: 600; cursor: default; }
+.json-exp-crumb-sep { flex-shrink: 0; color: var(--text-dim); }
+.json-exp-type { flex-shrink: 0; padding: 1px 8px; border-radius: 999px; background: var(--bg-hover); }
+.json-exp-type.type-string { color: var(--green); }
+.json-exp-type.type-number { color: var(--orange); }
+.json-exp-type.type-boolean { color: var(--purple); }
+.json-exp-type.type-null { color: var(--red); }
+.json-exp-size { flex-shrink: 0; font-family: var(--font-mono); }
+.json-exp-modes { display: flex; flex-shrink: 0; gap: 2px; padding: 2px; border-radius: var(--radius-s); background: var(--bg); }
+.json-exp-modes button { padding: 2px 10px; font-size: 12px; border-radius: var(--radius-s); background: none; color: var(--text-dim); }
+.json-exp-modes button:hover { color: var(--text); }
+.json-exp-modes button.active { background: var(--bg-active); color: var(--text); }
+.json-exp-copy { flex-shrink: 0; padding: 2px 10px; font-size: 12px; }
+
