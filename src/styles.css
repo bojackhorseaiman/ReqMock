@@ -12103,3 +12103,5 @@ mark.jv-hl { background: color-mix(in srgb, var(--orange) 45%, transparent); col
 .json-exp-table td { white-space: normal; word-break: break-all; overflow: visible; text-overflow: clip; vertical-align: top; }
 .json-exp-table .c-pct { white-space: nowrap; }
 .root-field-path { white-space: normal; word-break: break-all; }
+.json-exp-crumb.flat { color: var(--text); cursor: default; }
+.json-exp-crumb.flat:hover { background: none; text-decoration: none; }

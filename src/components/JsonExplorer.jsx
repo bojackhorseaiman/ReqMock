@@ -93,10 +93,15 @@ export function resolveExplorer(rootNode, rootKey, rootBytes, want, opts = {}) {
     keys.push(k);
   }
   const complete = keys.length === w.path.length;
-  const leaf = complete && w.leaf != null && hasOwn(node, w.leaf) ? w.leaf : null;
+  const items = buildChildren(node);
+  let leaf = complete && w.leaf != null && hasOwn(node, w.leaf) ? w.leaf : null;
+  // 当前层只有一个子节点：不展示左侧列表，直接展示这个子节点的内容
+  const single = items.length === 1;
+  if (leaf === null && single && !(complete && w.mode === 'json')) leaf = items[0].key;
   return {
     root: rootKey, node, keys, crumbs, path, leaf,
-    items: buildChildren(node),
+    items,
+    single,
     isArr: Array.isArray(node),
     label: describeJsonValue(node).label,
     bytes: keys.length === 0 && rootBytes != null ? rootBytes : utf8Len(JSON.stringify(node)),
@@ -128,7 +133,7 @@ const PANE_DEFAULT = { mode: '', seq: 0, raw: false };
  */
 export function JsonNodeExplorer({
   crumbs, onCrumb, node, items, isArray, nodeLabel, nodeBytes,
-  leafKey, onSelectChild, onEnter, mode, onMode, filter, onCopy, detail
+  leafKey, onSelectChild, onEnter, mode, onMode, filter, onCopy, detail, single = false
 }) {
   const q = (filter || '').trim();
   const f = q.toLowerCase();
@@ -156,7 +161,7 @@ export function JsonNodeExplorer({
   const leafEnterable = leaf && (leaf.type === 'object' || leaf.type === 'array') && leaf.count > 0;
 
   const goUp = () => {
-    if (leaf) onSelectChild(null);
+    if (leaf && !single) onSelectChild(null);
     else if (depth > 0) onCrumb(depth - 1);
   };
   const onKeyDown = (e) => {
@@ -169,6 +174,7 @@ export function JsonNodeExplorer({
 
   return (
     <div className="json-exp" tabIndex={-1} onKeyDown={onKeyDown}>
+      {!single && (
       <aside className="json-exp-side">
         {depth > 0 && (
           <div className="json-exp-item up" title={`返回上一层 ${crumbs[depth - 1].path}（Backspace）`} onClick={() => onCrumb(depth - 1)}>
@@ -199,6 +205,7 @@ export function JsonNodeExplorer({
         {emptyHint}
         {noMatch}
       </aside>
+      )}
 
       <section className="json-exp-main">
         <div className="json-exp-head">
@@ -206,8 +213,8 @@ export function JsonNodeExplorer({
             {crumbs.map((c, i) => (
               <React.Fragment key={i}>
                 {i > 0 && <span className="json-exp-crumb-sep">›</span>}
-                {i === depth && !leaf
-                  ? <span className="json-exp-crumb current">{c.label}</span>
+                {i === depth && (!leaf || single)
+                  ? <span className={`json-exp-crumb ${leaf ? 'flat' : 'current'}`}>{c.label}</span>
                   : <button className="json-exp-crumb" title={c.path} onClick={() => onCrumb(i)}>{c.label}</button>}
               </React.Fragment>
             ))}

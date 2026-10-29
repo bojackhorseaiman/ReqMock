@@ -790,6 +790,7 @@ export default function ResponsePanel({
               nodeLabel={explorer.label}
               nodeBytes={explorer.bytes}
               leafKey={explorer.leaf}
+              single={explorer.single}
               onSelectChild={selectChild}
               mode={explorer.mode}
               onMode={setExplorerMode}
