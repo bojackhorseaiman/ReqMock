@@ -470,8 +470,8 @@ export function SettingsModal({ settings, onChange, onBackup, onRestore, onCheck
                 </div>
                 <div className="settings-section-title">链接</div>
                 <div className="about-links">
-                  <a className="about-link" href="https://github.com/leleworld/ReqMock" target="_blank" rel="noreferrer">GitHub 仓库</a>
-                  <a className="about-link" href="https://github.com/leleworld/ReqMock/releases" target="_blank" rel="noreferrer">版本发布</a>
+                  <a className="about-link" href="https://github.com/bojackhorseaiman/ReqMock" target="_blank" rel="noreferrer">GitHub 仓库</a>
+                  <a className="about-link" href="https://github.com/bojackhorseaiman/ReqMock/releases" target="_blank" rel="noreferrer">版本发布</a>
                 </div>
                 <div className="settings-section-title">更新</div>
                 <button className="btn-secondary" onClick={onCheckUpdate}>检查更新</button>

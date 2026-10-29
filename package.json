@@ -37,7 +37,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "leleworld",
+        "owner": "bojackhorseaiman",
         "repo": "ReqMock"
       }
     ],

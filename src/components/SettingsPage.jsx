@@ -359,8 +359,8 @@ export default function SettingsPage({ settings, onChange, onBackup, onRestore, 
               </div>
               <div className="sp-item">
                 <div className="sp-btn-group">
-                  <a className="btn-secondary sp-link-btn" href="https://github.com/leleworld/ReqMock" target="_blank" rel="noreferrer">GitHub</a>
-                  <a className="btn-secondary sp-link-btn" href="https://github.com/leleworld/ReqMock/releases" target="_blank" rel="noreferrer">版本发布</a>
+                  <a className="btn-secondary sp-link-btn" href="https://github.com/bojackhorseaiman/ReqMock" target="_blank" rel="noreferrer">GitHub</a>
+                  <a className="btn-secondary sp-link-btn" href="https://github.com/bojackhorseaiman/ReqMock/releases" target="_blank" rel="noreferrer">版本发布</a>
                   <button className="btn-secondary" onClick={onCheckUpdate}>检查更新</button>
                 </div>
               </div>
