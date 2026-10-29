@@ -12008,4 +12008,6 @@ body::after {
 .json-exp-modes button:hover { color: var(--text); }
 .json-exp-modes button.active { background: var(--bg-active); color: var(--text); }
 .json-exp-copy { flex-shrink: 0; padding: 2px 10px; font-size: 12px; }
+/* 「基础信息」合成页签：与字段页签区分，用常规字体 */
+.root-tab-basic .root-tab-key { font-family: inherit; }
 

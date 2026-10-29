@@ -75,12 +75,13 @@ export function buildChildren(node) {
 /**
  * 按导航状态解析当前所在节点：沿 want.path 逐层下钻，新响应缺失某一层时停在最深的有效层
  * @param want { path: string[], leaf: string|null, mode: 'overview'|'json' } | null
+ * @param opts { label?, path? } 根层显示名与 JSONPath（默认取 rootKey / $.rootKey）
  */
-export function resolveExplorer(rootNode, rootKey, rootBytes, want) {
+export function resolveExplorer(rootNode, rootKey, rootBytes, want, opts = {}) {
   const w = want || { path: [], leaf: null, mode: 'overview' };
   let node = rootNode;
-  let path = '$' + pathSeg(false, rootKey);
-  const crumbs = [{ label: rootKey, path }];
+  let path = opts.path ?? ('$' + pathSeg(false, rootKey));
+  const crumbs = [{ label: opts.label ?? rootKey, path }];
   const keys = [];
   for (const k of w.path) {
     if (!hasOwn(node, k) || !isContainer(node[k])) break;

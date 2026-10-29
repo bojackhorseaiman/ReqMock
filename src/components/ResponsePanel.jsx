@@ -22,6 +22,10 @@ const LARGE_BODY_THRESHOLD = 1024 * 1024;
 const LARGE_BODY_MAX_LINES = 5000;
 /** 根节点子页签：超过此体积不拆分（避免重复解析超大 JSON） */
 const ROOT_TABS_MAX_BYTES = 5 * 1024 * 1024;
+/** 根字段子节点数超过此值才单独成页签；其余根字段合并进「基础信息」页签 */
+const ROOT_TAB_MIN_CHILDREN = 5;
+/** 「基础信息」合成页签的内部 key（含 \u0000，不会与真实字段名冲突） */
+const BASIC_TAB_KEY = '\u0000basic';
 /** 页签/视图顺序：切换时据序号差决定滑动方向 */
 const RESP_TABS = ['body', 'headers', 'cookies', 'timings', 'trace', 'tests'];
 /** 响应体视图：美化视图按内容类型展示，原始视图看原始内容，Diff 对比历史响应 */
@@ -206,13 +210,23 @@ export default function ResponsePanel({
     if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
     const tabs = [];
     const scalars = [];
+    const basic = {}; // 子节点不超过 ROOT_TAB_MIN_CHILDREN 的根字段（含标量）
     for (const k of Object.keys(data)) {
       const v = data[k];
-      if (isContainer(v)) tabs.push({ key: k, ...describeJsonValue(v), bytes: utf8Len(JSON.stringify(v)) });
-      else scalars.push({ key: k, type: describeJsonValue(v).type, text: scalarText(v) });
+      const info = describeJsonValue(v);
+      if (isContainer(v) && info.count > ROOT_TAB_MIN_CHILDREN) {
+        tabs.push({ key: k, name: k, ...info, bytes: utf8Len(JSON.stringify(v)) });
+        continue;
+      }
+      basic[k] = v;
+      if (!isContainer(v)) scalars.push({ key: k, type: info.type, text: scalarText(v) });
     }
-    if (tabs.length === 0) return null; // 全是标量时无需拆分
-    return { data, tabs, scalars, totalBytes: utf8Len(response.body) };
+    if (tabs.length === 0) return null; // 没有足够大的根字段时无需拆分，直接看完整 JSON
+    const basicCount = Object.keys(basic).length;
+    if (basicCount > 0) {
+      tabs.push({ key: BASIC_TAB_KEY, name: '基础信息', synthetic: true, type: 'object', count: basicCount, label: `对象 · ${basicCount} 个键`, bytes: utf8Len(JSON.stringify(basic)) });
+    }
+    return { data, basic, tabs, scalars, totalBytes: utf8Len(response.body) };
   }, [response, isJsonBody]);
   // 当前根页签：用户选过且新响应仍有该字段则保持（便于重复发送时盯同一字段），否则落到首个对象/数组字段
   const rootKey = !rootTabs || rootPref === null ? null
@@ -222,7 +236,10 @@ export default function ResponsePanel({
   const explorer = useMemo(() => {
     if (!rootTabs || rootKey === null) return null;
     const tabInfo = rootTabs.tabs.find((t) => t.key === rootKey);
-    return resolveExplorer(rootTabs.data[rootKey], rootKey, tabInfo.bytes, nav && nav.root === rootKey ? nav : null);
+    const want = nav && nav.root === rootKey ? nav : null;
+    return tabInfo.synthetic
+      ? resolveExplorer(rootTabs.basic, rootKey, tabInfo.bytes, want, { label: tabInfo.name, path: '$' })
+      : resolveExplorer(rootTabs.data[rootKey], rootKey, tabInfo.bytes, want);
   }, [rootTabs, rootKey, nav]);
   const explorerLeaf = useMemo(() => {
     if (!explorer || explorer.leaf === null) return null;
@@ -695,21 +712,21 @@ export default function ResponsePanel({
           {rootTabs.tabs.map((t) => (
             <button
               key={t.key} role="tab" aria-selected={rootKey === t.key}
-              className={`root-tab${rootKey === t.key ? ' active' : ''}`}
-              title={`${t.key} · ${t.label} · ${formatBytes(t.bytes)}`}
+              className={`root-tab${t.synthetic ? ' root-tab-basic' : ''}${rootKey === t.key ? ' active' : ''}`}
+              title={t.synthetic ? `子节点不超过 ${ROOT_TAB_MIN_CHILDREN} 个的根字段 · ${t.count} 个 · ${formatBytes(t.bytes)}` : `${t.name} · ${t.label} · ${formatBytes(t.bytes)}`}
               onClick={() => setRootKey(t.key)}
             >
-              <span className="root-tab-key">{t.key}</span>
-              <span className="root-tab-meta">{t.type === 'array' ? `${t.count} 项 · ` : ''}{formatBytes(t.bytes)}</span>
+              <span className="root-tab-key">{t.name}</span>
+              <span className="root-tab-meta">{t.synthetic ? `${t.count} 个字段 · ` : t.type === 'array' ? `${t.count} 项 · ` : ''}{formatBytes(t.bytes)}</span>
             </button>
           ))}
           <button
             role="tab" aria-selected={rootKey === null}
             className={`root-tab root-tab-full${rootKey === null ? ' active' : ''}`}
-            title="显示完整响应"
+            title="完整响应 JSON"
             onClick={() => setRootKey(null)}
           >
-            <span className="root-tab-key">完整 JSON</span>
+            <span className="root-tab-key">JSON</span>
             <span className="root-tab-meta">{formatBytes(rootTabs.totalBytes)}</span>
           </button>
           <span className="flex-spacer" />
