@@ -209,7 +209,6 @@ export default function ResponsePanel({
     try { data = JSON.parse(response.body); } catch { return null; }
     if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
     const tabs = [];
-    const scalars = [];
     const basic = {}; // 子节点不超过 ROOT_TAB_MIN_CHILDREN 的根字段（含标量）
     for (const k of Object.keys(data)) {
       const v = data[k];
@@ -219,14 +218,13 @@ export default function ResponsePanel({
         continue;
       }
       basic[k] = v;
-      if (!isContainer(v)) scalars.push({ key: k, type: info.type, text: scalarText(v) });
     }
     if (tabs.length === 0) return null; // 没有足够大的根字段时无需拆分，直接看完整 JSON
     const basicCount = Object.keys(basic).length;
     if (basicCount > 0) {
       tabs.push({ key: BASIC_TAB_KEY, name: '基础信息', synthetic: true, type: 'object', count: basicCount, label: `对象 · ${basicCount} 个键`, bytes: utf8Len(JSON.stringify(basic)) });
     }
-    return { data, basic, tabs, scalars, totalBytes: utf8Len(response.body) };
+    return { data, basic, tabs, totalBytes: utf8Len(response.body) };
   }, [response, isJsonBody]);
   // 当前根页签：用户选过且新响应仍有该字段则保持（便于重复发送时盯同一字段），否则落到首个对象/数组字段
   const rootKey = !rootTabs || rootPref === null ? null
@@ -268,14 +266,6 @@ export default function ResponsePanel({
     setNav({ root: explorer.root, path: explorer.keys, leaf: k, mode: 'overview' });
   };
   const setExplorerMode = (m) => setNav({ root: explorer.root, path: explorer.keys, leaf: null, mode: m });
-  const copyText = async (text, okMsg) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      onToast && onToast(okMsg);
-    } catch (e) {
-      onToast && onToast('复制失败：' + e.message);
-    }
-  };
 
   // 新响应到达：美化类视图按 Content-Type 自动对齐（Raw/Hex/Base64 保持用户选择）
   const lastRespRef = useRef(null);
@@ -730,15 +720,6 @@ export default function ResponsePanel({
             <span className="root-tab-meta">{formatBytes(rootTabs.totalBytes)}</span>
           </button>
           <span className="flex-spacer" />
-          {rootTabs.scalars.map((sc) => (
-            <button
-              key={sc.key} className={`root-scalar type-${sc.type}`}
-              title={`${sc.key} = ${sc.text}\n点击复制值`}
-              onClick={() => copyText(sc.text, `已复制 ${sc.key}`)}
-            >
-              <span className="root-scalar-key">{sc.key}</span> = <span className="root-scalar-val">{sc.text}</span>
-            </button>
-          ))}
           {rootKey !== null && (
             <input
               className="root-node-filter"

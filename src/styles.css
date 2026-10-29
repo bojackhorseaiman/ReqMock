@@ -11880,18 +11880,6 @@ body::after {
 .root-tab-key { font-family: var(--font-mono); font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .root-tab-full .root-tab-key { font-family: inherit; }
 .root-tab-meta { font-family: var(--font-mono); font-size: 11px; opacity: 0.75; white-space: nowrap; }
-.root-scalar {
-  align-self: center; margin-bottom: 4px; flex-shrink: 0; max-width: 280px;
-  padding: 2px 10px; border: 1px solid var(--border); border-radius: 999px;
-  background: var(--bg); color: var(--text-dim); font-family: var(--font-mono); font-size: 12px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
-}
-.root-scalar:hover { border-color: var(--accent); color: var(--text); }
-.root-scalar-key { color: var(--text); }
-.root-scalar.type-string .root-scalar-val { color: var(--green); }
-.root-scalar.type-number .root-scalar-val { color: var(--orange); }
-.root-scalar.type-boolean .root-scalar-val { color: var(--purple); }
-.root-scalar.type-null .root-scalar-val { color: var(--red); }
 .root-node-filter {
   align-self: center; margin-bottom: 4px; flex-shrink: 0; width: 180px;
   padding: 3px 8px; font-size: 12px; color: var(--text); background: var(--bg);
