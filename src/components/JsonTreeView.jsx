@@ -64,7 +64,7 @@ function hl(text, q) {
   let i = 0;
   while ((m = re.exec(text)) && i < 500) {
     if (m.index > last) out.push(text.slice(last, m.index));
-    out.push(<mark className="jt-hl" key={i++}>{m[0]}</mark>);
+    out.push(<mark className="jv-hl" key={i++}>{m[0]}</mark>);
     last = m.index + m[0].length;
   }
   if (last < text.length) out.push(text.slice(last));
@@ -98,17 +98,17 @@ function textNode(text, q) {
 }
 
 function Leaf({ v, q }) {
-  if (v === null || v === undefined) return <span className="jt-null">null</span>;
-  if (typeof v === 'boolean') return <span className={`jt-b ${v ? 't' : 'f'}`}>{String(v)}</span>;
-  if (typeof v === 'number') return <span className="jt-n">{hl(String(v), q)}</span>;
-  if (v === '') return <span className="jt-s empty">""</span>;
-  return <span className="jt-s">"{textNode(v, q)}"</span>;
+  if (v === null || v === undefined) return <span className="jv-null">null</span>;
+  if (typeof v === 'boolean') return <span className={`jv-b ${v ? 't' : 'f'}`}>{String(v)}</span>;
+  if (typeof v === 'number') return <span className="jv-n">{hl(String(v), q)}</span>;
+  if (v === '') return <span className="jv-s empty">""</span>;
+  return <span className="jv-s">"{textNode(v, q)}"</span>;
 }
 
 /** 表格单元格：字符串不加引号，嵌套值压成一行 */
 function Cell({ v, q }) {
-  if (isComplex(v)) return <span className="jt-s">{textNode(str(v), q)}</span>;
-  if (typeof v === 'string') return v === '' ? <span className="jt-null">（空）</span> : <span className="jt-s">{textNode(v, q)}</span>;
+  if (isComplex(v)) return <span className="jv-s">{textNode(str(v), q)}</span>;
+  if (typeof v === 'string') return v === '' ? <span className="jv-null">（空）</span> : <span className="jv-s">{textNode(v, q)}</span>;
   return <Leaf v={v} q={q} />;
 }
 
@@ -147,14 +147,14 @@ function renderTable(q, arr) {
   const keys = flatKeys(arr);
   if (!keys) return null;
   return (
-    <div className="jt-tblwrap" key="\u0000tbl">
-      <table className="jt-tbl">
+    <div className="jv-tblwrap" key="\u0000tbl">
+      <table className="jv-tbl">
         <thead><tr><th className="idx">#</th>{keys.map((k) => <th key={k}>{hl(k, q)}</th>)}</tr></thead>
         <tbody>
           {arr.map((o, i) => (
             <tr key={i}>
               <td className="idx">{i}</td>
-              {keys.map((k) => <td key={k}>{hasOwn(o, k) ? <Cell v={o[k]} q={q} /> : <span className="jt-null">—</span>}</td>)}
+              {keys.map((k) => <td key={k}>{hasOwn(o, k) ? <Cell v={o[k]} q={q} /> : <span className="jv-null">—</span>}</td>)}
             </tr>
           ))}
         </tbody>
@@ -180,7 +180,7 @@ function renderChildren(ctx, v, depth, keys, inStr) {
   }
   if (end < n) {
     out.push(
-      <div key="\u0000more" className="jt-more" onClick={() => ctx.onMore(pk, end + CHILD_LIMIT)}>还有 {n - end} 项，点击显示更多</div>
+      <div key="\u0000more" className="jv-more" onClick={() => ctx.onMore(pk, end + CHILD_LIMIT)}>还有 {n - end} 项，点击显示更多</div>
     );
   }
   return out;
@@ -191,11 +191,11 @@ function renderRow(ctx, key, isIdx, val, depth, siblings, keys, inStr) {
   const parsed = parseJsonStr(val);
   const fromStr = parsed !== undefined;
   if (fromStr) v = parsed;
-  const keyEl = <span className={`jt-k${isIdx ? ' idx' : ''}`}>{hl(key, ctx.q)}</span>;
+  const keyEl = <span className={`jv-k${isIdx ? ' idx' : ''}`}>{hl(key, ctx.q)}</span>;
   if (!isComplex(v)) {
     return (
-      <div className="jt-row leaf" key={key}>
-        <span className="jt-tg" />{keyEl}<span className="jt-p">: </span><Leaf v={v} q={ctx.q} />
+      <div className="jv-row leaf" key={key}>
+        <span className="jv-tg" />{keyEl}<span className="jv-p">: </span><Leaf v={v} q={ctx.q} />
       </div>
     );
   }
@@ -207,17 +207,17 @@ function renderRow(ctx, key, isIdx, val, depth, siblings, keys, inStr) {
   // JSON 字符串里的节点在原始数据中并不存在，不能作为下钻目标
   const canEnter = !!ctx.onEnter && !inStr && !fromStr && n > 0;
   return (
-    <div key={key} className={`jt-row${n ? '' : ' leaf'}${open ? ' open' : ''}`}>
-      <span className="jt-line">
-        <span className="jt-tg" onClick={toggle} />
-        <span className={`jt-k${isIdx ? ' idx' : ''}`} onClick={toggle}>{hl(key, ctx.q)}</span>
-        <span className="jt-p" onClick={toggle}>: </span>
-        <span className={`jt-sum${n ? '' : ' empty'}`} onClick={toggle}>{br[0]}{n || ''}{br[1]}</span>
-        {fromStr && <span className="jt-badge" title="原值是 JSON 字符串，已解析展示">JSON 字符串</span>}
-        {canEnter && <button className="jt-enter" title="把该节点作为当前层（下钻）" onClick={() => ctx.onEnter(keys)}>进入</button>}
-        {n > 0 && !open && <span className="jt-pv" onClick={toggle}>{str(v).slice(0, 120)}</span>}
+    <div key={key} className={`jv-row${n ? '' : ' leaf'}${open ? ' open' : ''}`}>
+      <span className="jv-line">
+        <span className="jv-tg" onClick={toggle} />
+        <span className={`jv-k${isIdx ? ' idx' : ''}`} onClick={toggle}>{hl(key, ctx.q)}</span>
+        <span className="jv-p" onClick={toggle}>: </span>
+        <span className={`jv-sum${n ? '' : ' empty'}`} onClick={toggle}>{br[0]}{n || ''}{br[1]}</span>
+        {fromStr && <span className="jv-badge" title="原值是 JSON 字符串，已解析展示">JSON 字符串</span>}
+        {canEnter && <button className="jv-enter" title="把该节点作为当前层（下钻）" onClick={() => ctx.onEnter(keys)}>进入</button>}
+        {n > 0 && !open && <span className="jv-pv" onClick={toggle}>{str(v).slice(0, 120)}</span>}
       </span>
-      {open && <div className="jt-ch">{renderChildren(ctx, v, depth + 1, keys, inStr || fromStr)}</div>}
+      {open && <div className="jv-ch">{renderChildren(ctx, v, depth + 1, keys, inStr || fromStr)}</div>}
     </div>
   );
 }
@@ -231,7 +231,7 @@ function TreeBlock({ value, q = '', mode = '', onEnter }) {
     onToggle: (pk, val) => setOpen((prev) => { const m = new Map(prev); m.set(pk, val); return m; }),
     onMore: (pk, lim) => setMore((prev) => { const m = new Map(prev); m.set(pk, lim); return m; })
   };
-  return <div className="jt-tree">{renderChildren(ctx, value, 0, [], false)}</div>;
+  return <div className="jv-tree">{renderChildren(ctx, value, 0, [], false)}</div>;
 }
 
 // ------------------------------------------------------------------
@@ -239,15 +239,15 @@ function TreeBlock({ value, q = '', mode = '', onEnter }) {
 // ------------------------------------------------------------------
 function Sec({ title, sub, children }) {
   return (
-    <div className="jt-sec">
-      <div className="jt-sec-h">{title}{sub && <span className="sub">{sub}</span>}</div>
+    <div className="jv-sec">
+      <div className="jv-sec-h">{title}{sub && <span className="sub">{sub}</span>}</div>
       {children}
     </div>
   );
 }
 
 function Chip({ x, q }) {
-  return <span className="jt-chip">{isComplex(x) ? textNode(str(x), q) : hl(String(x), q)}</span>;
+  return <span className="jv-chip">{isComplex(x) ? textNode(str(x), q) : hl(String(x), q)}</span>;
 }
 
 function isPds(v) {
@@ -265,23 +265,23 @@ function IntPds({ im, q }) {
       title={<>开关能力 <code>intPdsMap</code></>}
       sub={<>共 {ks.length} 项 · 开启 <b className="ok">{on}</b> · 关闭 {ks.length - on - other}{other ? ` · 其他值 ${other}` : ''}{ql ? ` · 匹配 ${show.length}` : ''}</>}
     >
-      <div className="jt-legend">
-        <span className="jt-flag on">1 开启</span><span className="jt-flag">0 关闭</span><span className="jt-flag v">其他值</span>
+      <div className="jv-legend">
+        <span className="jv-flag on">1 开启</span><span className="jv-flag">0 关闭</span><span className="jv-flag v">其他值</span>
         <span className="tip">鼠标悬停看具体值</span>
       </div>
       {show.length ? (
-        <div className="jt-flags">
+        <div className="jv-flags">
           {show.map((k) => {
             const val = im[k];
             const cls = isOn(val) ? 'on' : isOff(val) ? '' : 'v';
             return (
-              <span key={k} className={`jt-flag ${cls}`} title={`${k} = ${str(val)}`}>
+              <span key={k} className={`jv-flag ${cls}`} title={`${k} = ${str(val)}`}>
                 {hl(k, q)}{cls === 'v' && <i>={hl(isComplex(val) ? str(val) : String(val), q)}</i>}
               </span>
             );
           })}
         </div>
-      ) : <div className="jt-empty">没有匹配的开关能力</div>}
+      ) : <div className="jv-empty">没有匹配的开关能力</div>}
     </Sec>
   );
 }
@@ -298,8 +298,8 @@ function ArrPds({ am, q }) {
       sub={<>共 {aks.length} 项 · 有值 <b className="ok">{nonEmpty.length}</b> · 空 {aks.length - nonEmpty.length}{ql ? ` · 匹配 ${rows.length}` : ''}</>}
     >
       {rows.length ? (
-        <div className="jt-tblwrap">
-          <table className="jt-tbl">
+        <div className="jv-tblwrap">
+          <table className="jv-tbl">
             <thead><tr><th>能力</th><th className="num">数量</th><th>值</th></tr></thead>
             <tbody>
               {rows.map((k) => {
@@ -314,13 +314,13 @@ function ArrPds({ am, q }) {
                         <>
                           {arr.slice(0, CHIP_LIMIT).map((y, i) => <Chip key={i} x={y} q={q} />)}
                           {arr.length > CHIP_LIMIT && (
-                            <details className="jt-rest">
+                            <details className="jv-rest">
                               <summary>还有 {arr.length - CHIP_LIMIT} 个</summary>
                               {arr.slice(CHIP_LIMIT).map((y, i) => <Chip key={i} x={y} q={q} />)}
                             </details>
                           )}
                         </>
-                      ) : <span className="jt-null">空</span>}
+                      ) : <span className="jv-null">空</span>}
                     </td>
                   </tr>
                 );
@@ -328,7 +328,7 @@ function ArrPds({ am, q }) {
             </tbody>
           </table>
         </div>
-      ) : <div className="jt-empty">没有匹配的列表能力</div>}
+      ) : <div className="jv-empty">没有匹配的列表能力</div>}
     </Sec>
   );
 }
@@ -340,7 +340,7 @@ function PdsView({ v, q }) {
     others.forEach((k) => { rest[k] = x[k]; });
     return (
       <React.Fragment key={gi}>
-        {v.length > 1 && <div className="jt-group">第 {gi + 1} 组</div>}
+        {v.length > 1 && <div className="jv-group">第 {gi + 1} 组</div>}
         {isObj(x.intPdsMap) && <IntPds im={x.intPdsMap} q={q} />}
         {isObj(x.arrayPdsMap) && <ArrPds am={x.arrayPdsMap} q={q} />}
         {others.length > 0 && <Sec title="其他"><TreeBlock value={rest} q={q} /></Sec>}
@@ -375,8 +375,8 @@ function StepView({ v, q }) {
         title={<>分支 <code>{hl(name, q)}</code></>}
         sub={<>{ks.length} 个执行器 · 执行 <b className="ok">{execN}</b>{execN < ks.length && <> · 未执行 <b className="err">{ks.length - execN}</b></>}</>}
       >
-        <div className="jt-tblwrap">
-          <table className="jt-tbl">
+        <div className="jv-tblwrap">
+          <table className="jv-tbl">
             <thead><tr><th className="idx">#</th><th>执行器</th><th>步骤类型</th><th>execute</th>{hasExtra && <th>其他</th>}</tr></thead>
             <tbody>
               {rows.map((k) => {
@@ -400,7 +400,7 @@ function StepView({ v, q }) {
       </Sec>
     );
   }).filter(Boolean);
-  return secs.length ? secs : <div className="jt-empty">没有匹配的执行器</div>;
+  return secs.length ? secs : <div className="jv-empty">没有匹配的执行器</div>;
 }
 
 /** 识别专用视图：'pds' | 'step' | null */
@@ -419,16 +419,16 @@ export function special(v) {
 export function JsonValueView({ value, q = '', mode = '', raw = false, onEnter }) {
   const sp = special(value);
   if (sp && !raw) {
-    return <div className="jt-pane">{sp === 'pds' ? <PdsView v={value} q={q} /> : <StepView v={value} q={q} />}</div>;
+    return <div className="jv-pane">{sp === 'pds' ? <PdsView v={value} q={q} /> : <StepView v={value} q={q} />}</div>;
   }
   const parsed = parseJsonStr(value);
   const v = parsed !== undefined ? parsed : value;
   if (!isComplex(v)) return null;
   return (
-    <div className="jt-pane">
-      {parsed !== undefined && <div className="jt-note"><span className="jt-badge">JSON 字符串</span> 原值是 JSON 字符串，已解析展示</div>}
+    <div className="jv-pane">
+      {parsed !== undefined && <div className="jv-note"><span className="jv-badge">JSON 字符串</span> 原值是 JSON 字符串，已解析展示</div>}
       {count(v) === 0
-        ? <div className="jt-tree"><span className="jt-null">{Array.isArray(v) ? '[] 空数组' : '{} 空对象'}</span></div>
+        ? <div className="jv-tree"><span className="jv-null">{Array.isArray(v) ? '[] 空数组' : '{} 空对象'}</span></div>
         : <TreeBlock value={v} q={q} mode={mode} onEnter={parsed === undefined ? onEnter : undefined} />}
     </div>
   );

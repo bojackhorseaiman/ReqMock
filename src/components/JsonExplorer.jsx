@@ -311,7 +311,7 @@ function hlText(text, q) {
   let n = 0;
   while ((i = lowText.indexOf(ql, last)) !== -1 && n < 50) {
     if (i > last) out.push(text.slice(last, i));
-    out.push(<mark className="jt-hl" key={n++}>{text.slice(i, i + q.length)}</mark>);
+    out.push(<mark className="jv-hl" key={n++}>{text.slice(i, i + q.length)}</mark>);
     last = i + q.length;
   }
   if (last < text.length) out.push(text.slice(last));
