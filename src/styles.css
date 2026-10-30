@@ -11917,6 +11917,9 @@ body::after {
   position: sticky; top: 0; z-index: 1; padding: 5px 8px; text-align: left;
   font-weight: 500; color: var(--text-dim); background: var(--bg-panel); border: 1px solid var(--border);
 }
+.json-exp-table th.sortable { cursor: pointer; user-select: none; }
+.json-exp-table th.sortable:hover { color: var(--text); }
+.json-exp-table th.sort-on { color: var(--accent); }
 .json-exp-table td { padding: 4px 8px; border: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .json-exp-table tbody tr { cursor: pointer; }
 .json-exp-table tbody tr:hover td { background: var(--bg-hover); }

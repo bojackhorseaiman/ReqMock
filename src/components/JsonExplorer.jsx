@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { JsonValueView, isTreeable, special } from './JsonTreeView.jsx';
+import { JsonValueView, isTreeable, special, parseJsonStr } from './JsonTreeView.jsx';
 
 /**
  * JSON 结构浏览器：根节点子页签内部视图（交互参考 njbp-tools/onlineissue 的 monitor_view.js）
@@ -56,19 +56,61 @@ export function pathSeg(parentIsArray, key) {
   return /^[A-Za-z_$][\w$]*$/.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`;
 }
 
-/** 构建子节点列表：键 / 展示名 / 类型 / 字节数 / 预览 / 搜索串 */
+/** 形状链：逐层解开「单元素数组」「JSON 字符串」两类包装（最多 2 层），返回链标签与最内层真实值 */
+export function unwrapShape(v) {
+  const chain = [];
+  let cur = v;
+  for (let i = 0; i < 2; i++) {
+    if (Array.isArray(cur) && cur.length === 1) { chain.push('数组·1'); cur = cur[0]; continue; }
+    const parsed = typeof cur === 'string' ? parseJsonStr(cur) : undefined;
+    if (parsed !== undefined) { chain.push('JSON串'); cur = parsed; continue; }
+    break;
+  }
+  return { chain, inner: cur };
+}
+
+/** 对象键名摘要：{a, b, …共N键} */
+function keySummary(o, max = 8) {
+  const ks = Object.keys(o);
+  const head = ks.slice(0, max).join(', ');
+  return `{${head}${ks.length > max ? `, …共${ks.length}键` : ''}}`;
+}
+
+/** 最内层值预览：对象给键名摘要，数组给数量+首元素键名，标量给值 */
+function innerPreview(inner) {
+  if (inner === null || typeof inner !== 'object') {
+    const s = scalarText(inner);
+    return s.length > 120 ? s.slice(0, 120) + '…' : s;
+  }
+  if (Array.isArray(inner)) {
+    const e = inner[0];
+    if (inner.length && e !== null && typeof e === 'object' && !Array.isArray(e)) return `[${keySummary(e)}] ×${inner.length}`;
+    return `[${inner.length} 项]`;
+  }
+  return keySummary(inner);
+}
+
+/** 构建子节点列表：键 / 展示名 / 类型 / 形状链 / 字节数 / 解包预览 / 搜索串 */
 export function buildChildren(node) {
   const isArr = Array.isArray(node);
   const keys = isArr ? node.map((_, i) => String(i)) : Object.keys(node);
   return keys.map((k) => {
     const v = node[k];
     const compact = JSON.stringify(v) ?? 'null';
+    const { chain, inner } = unwrapShape(v);
+    const wrapped = chain.length > 0;
+    const innerDesc = describeJsonValue(inner);
+    const innerCompact = JSON.stringify(inner) ?? 'null';
     return {
       key: k,
       name: isArr ? `[${k}]` : k,
       ...describeJsonValue(v),
+      shapeLabel: wrapped ? `${chain.join(' → ')} → ${innerDesc.label}` : innerDesc.label,
+      innerType: innerDesc.type,
+      wrapped,
       bytes: utf8Len(compact),
-      preview: compact.length > 300 ? compact.slice(0, 300) + '…' : compact,
+      preview: innerPreview(inner),
+      previewFull: innerCompact.length > 300 ? innerCompact.slice(0, 300) + '…' : innerCompact,
       hay: (k + '\u0000' + compact).toLowerCase()
     };
   });
@@ -123,6 +165,15 @@ function countHits(text, ql) {
   return n;
 }
 
+/** 概览排序：size 大小降序 / name 名称升序 / '' 原始顺序 */
+function sortItems(items, key) {
+  if (!key) return items;
+  const arr = items.slice();
+  if (key === 'size') arr.sort((a, b) => b.bytes - a.bytes);
+  else arr.sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'));
+  return arr;
+}
+
 const PANE_DEFAULT = { mode: '', seq: 0, raw: false };
 
 /**
@@ -137,19 +188,24 @@ export function JsonNodeExplorer({
 }) {
   const q = (filter || '').trim();
   const f = q.toLowerCase();
+  // 概览排序（默认大小降序）：左栏与概览表共用同一顺序，避免两边错位
+  const [sortKey, setSortKey] = useState('size');
+  const sorted = useMemo(() => sortItems(items, sortKey), [items, sortKey]);
   const hits = useMemo(() => {
     if (!f) return null;
     const m = new Map();
-    for (const c of items) m.set(c.key, countHits(c.hay, f));
+    for (const c of sorted) m.set(c.key, countHits(c.hay, f));
     return m;
-  }, [items, f]);
+  }, [sorted, f]);
   // 搜索时只留命中的节点（当前选中的节点即使没命中也保留，避免右侧内容「消失」）
-  const shown = useMemo(() => (hits ? items.filter((c) => hits.get(c.key) > 0 || c.key === leafKey) : items), [items, hits, leafKey]);
+  const shown = useMemo(() => (hits ? sorted.filter((c) => hits.get(c.key) > 0 || c.key === leafKey) : sorted), [sorted, hits, leafKey]);
   const list = shown.length > LIST_MAX ? shown.slice(0, LIST_MAX) : shown;
   const leaf = leafKey !== null ? items.find((c) => c.key === leafKey) || null : null;
   const depth = crumbs.length - 1;
   const cur = crumbs[depth];
   const showDetail = !!leaf || mode === 'json';
+  // 概览模式且无搜索：收起左栏让概览表吃满宽度；选中节点 / JSON 模式 / 搜索时左栏回来
+  const showSide = !single && (showDetail || !!f);
 
   // 详情展示方式（展开全部 / 收起全部 / 美化⇄树形）：换节点时自动回到默认
   const paneKey = cur.path + '\u0000' + (leafKey ?? '');
@@ -174,7 +230,7 @@ export function JsonNodeExplorer({
 
   return (
     <div className="json-exp" tabIndex={-1} onKeyDown={onKeyDown}>
-      {!single && (
+      {showSide && (
       <aside className="json-exp-side">
         {depth > 0 && (
           <div className="json-exp-item up" title={`返回上一层 ${crumbs[depth - 1].path}（Backspace）`} onClick={() => onCrumb(depth - 1)}>
@@ -192,7 +248,7 @@ export function JsonNodeExplorer({
             <div
               key={c.key}
               className={`json-exp-item${c.key === leafKey ? ' active' : ''}`}
-              title={`${c.name}\n${c.label} · ${formatBytes(c.bytes)}${canEnter ? '\n双击进入下一层' : ''}`}
+              title={`${c.name}\n${c.shapeLabel} · ${formatBytes(c.bytes)}${canEnter ? '\n双击进入下一层' : ''}`}
               onClick={() => onSelectChild(c.key)}
               onDoubleClick={canEnter ? () => onEnter([c.key]) : undefined}
             >
@@ -274,11 +330,25 @@ export function JsonNodeExplorer({
             <div className="json-exp-hint">点击一行查看该节点；对象/数组可「进入下一层」（或双击左侧节点）；上方路径可跳回任意一层，Backspace 返回</div>
             <table className="json-exp-table">
               <colgroup>
-                <col style={{ width: '22%' }} /><col style={{ width: 120 }} /><col style={{ width: 90 }} />
+                <col style={{ width: '22%' }} /><col style={{ width: 170 }} /><col style={{ width: 90 }} />
                 <col style={{ width: 180 }} /><col />
               </colgroup>
               <thead>
-                <tr><th>节点</th><th>类型</th><th className="c-size">大小</th><th>占比</th><th>内容预览</th></tr>
+                <tr>
+                  <th
+                    className={`sortable${sortKey === 'name' ? ' sort-on' : ''}`}
+                    title={sortKey === 'name' ? '点击恢复原始顺序' : '点击按名称升序'}
+                    onClick={() => setSortKey(sortKey === 'name' ? '' : 'name')}
+                  >节点{sortKey === 'name' ? ' ↑' : ''}</th>
+                  <th>类型</th>
+                  <th
+                    className={`c-size sortable${sortKey === 'size' ? ' sort-on' : ''}`}
+                    title={sortKey === 'size' ? '点击恢复原始顺序' : '点击按大小降序'}
+                    onClick={() => setSortKey(sortKey === 'size' ? '' : 'size')}
+                  >大小{sortKey === 'size' ? ' ↓' : ''}</th>
+                  <th>占比</th>
+                  <th>内容预览</th>
+                </tr>
               </thead>
               <tbody>
                 {list.map((c) => {
@@ -286,13 +356,13 @@ export function JsonNodeExplorer({
                   return (
                     <tr key={c.key} onClick={() => onSelectChild(c.key)}>
                       <td className="c-name" title={c.name}>{hits ? hlText(c.name, q) : c.name}{hitBadge(c.key)}</td>
-                      <td className="c-type">{c.label}</td>
+                      <td className="c-type" title={c.shapeLabel}>{c.shapeLabel}</td>
                       <td className={`c-size${pct >= 20 ? ' big' : ''}`}>{formatBytes(c.bytes)}</td>
                       <td className="c-pct">
                         <span className="json-exp-bar"><i style={{ width: `${Math.min(100, pct)}%` }} /></span>
                         {pctText(pct)}
                       </td>
-                      <td className={`c-preview type-${c.type}`} title={c.preview}>{c.preview}</td>
+                      <td className={`c-preview type-${c.wrapped ? c.innerType : c.type}`} title={c.previewFull}>{c.preview}</td>
                     </tr>
                   );
                 })}
