@@ -144,6 +144,17 @@ export default function SettingsPage({ settings, onChange, onBackup, onRestore, 
                   <span className="sp-toggle-slider" />
                 </label>
               </div>
+
+              <div className="sp-item sp-item-row">
+                <div>
+                  <span className="sp-item-title">JSON 结构浏览器</span>
+                  <span className="sp-item-desc">JSON 视图按根字段拆页签，提供概览表 / 下钻 / 美化展示；关闭时 JSON 视图仅显示缩进纯文本</span>
+                </div>
+                <label className="sp-toggle">
+                  <input type="checkbox" checked={settings.jsonExplorer || false} onChange={(e) => onChange({ jsonExplorer: e.target.checked })} />
+                  <span className="sp-toggle-slider" />
+                </label>
+              </div>
             </div>
           </section>
 

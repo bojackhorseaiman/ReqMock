@@ -3918,6 +3918,8 @@ export default function App() {
 
                 showLineNumbers={settings.lineNumbers}
 
+                jsonExplorer={settings.jsonExplorer === true}
+
                 scriptResult={curTab.scriptResult}
 
                 onResponseToMock={handleResponseToMock}

@@ -95,7 +95,7 @@ export default function ResponsePanel({
   layout, onToggleLayout, focused, onToggleFocus, historyList = [], onSelectHistory,
   onRetry, onRetryNoSsl, onOpenConsole,
   onSaveExample, onSaveBody, onExtractVariable, onInsertAssertion,
-  fontSize, tabSize, wordWrap, showLineNumbers
+  fontSize, tabSize, wordWrap, showLineNumbers, jsonExplorer = false
 }) {
   const [tab, setTab] = useState('body');
   const [view, setView] = useState('json');
@@ -221,6 +221,8 @@ export default function ResponsePanel({
     return () => clearTimeout(t);
   }, [nodeFilterInput]);
   const rootTabs = useMemo(() => {
+    // 设置页「JSON 结构浏览器」关闭：不拆根页签，JSON 视图走纯 CodeMirror 缩进文本
+    if (!jsonExplorer) return null;
     if (!response || !response.ok || !isJsonBody || response.body.length > ROOT_TABS_MAX_BYTES) return null;
     let data;
     try { data = JSON.parse(response.body); } catch { return null; }
@@ -234,7 +236,7 @@ export default function ResponsePanel({
     }
     if (tabs.length === 0) return null; // 没有足够大的根字段时不拆分，直接看完整 JSON
     return { data, tabs, totalBytes: utf8Len(response.body) };
-  }, [response, isJsonBody]);
+  }, [response, isJsonBody, jsonExplorer]);
   // 当前根页签：用户选过且新响应仍有该字段则保持（便于重复发送时盯同一字段），否则落到首个对象/数组字段
   const rootKey = !rootTabs || rootPref === null ? null
     : (rootPref !== undefined && rootTabs.tabs.some((t) => t.key === rootPref)) ? rootPref

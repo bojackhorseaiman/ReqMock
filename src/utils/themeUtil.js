@@ -86,6 +86,7 @@ export function normalizeSettings(s) {
     // 视图 & 交互
     zenMode: settings.zenMode === true,
     trayMode: settings.trayMode === true,
+    jsonExplorer: settings.jsonExplorer === true,
     zoomLevel: [75, 100, 125, 150].includes(settings.zoomLevel) ? settings.zoomLevel : 100,
     proxy: typeof settings.proxy === 'string' ? settings.proxy : '',
     // 可拖拽布局：侧栏宽度 / 请求响应分栏比例
